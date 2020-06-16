@@ -161,13 +161,6 @@
 #        except AttributeError:
 #            pass
 #
-@property
-def batch_size(self):
-    return self._batch_size
-
-@property
-def epochs_completed(self):
-    return self._epochs_completed
 
 #!/usr/bin/env python
 # # -*- coding: utf-8 -*-
@@ -179,6 +172,7 @@ import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 import cv2
 import numpy as np 
+from PIL import Image
 from .utilpack import get_rng
 from .DataFlow import DataFlow
 
@@ -229,52 +223,93 @@ class MNISTData(RNGDataFlow):
 
         self._load_files(name)
         self._image_id = 0
+    
+    @property
+    def batch_size(self):
+        return self._batch_size
+
+    @property
+    def epochs_completed(self):
+        return self._epochs_completed
+
+    
+    def setup(self, epoch_val, batch_size, **kwargs):
+        self._epochs_completed = epoch_val
+        self._batch_size = batch_size
+        self.rng = get_rng(self)
+        try:
+            self._suffle_files()
+        except AttributeError:
+            pass
+
+    def read_img(self,path):
+        img = cv2.imread(path,0);
+        img = img.astype(dtype=np.float32)/256.0
+        return img
+
 
     def next_batch_dict(self):
         batch_data = self.next_batch()
         data_dict = {key: data for key, data in zip(self._batch_dict_name, batch_data)}
         return data_dict
 
-    def _load_files(self, name, n_use_label, n_use_sample):
+    def _load_files( self,name):
         if name=='train':
-            directory = 'C:/Users/Rishikesh/Documents/Codes/IITM_neural_network_Assignment/recurrent-attention-model/example/yale b/ExtendedYaleB/train'#directory for training data
+            Dirs = 'C:/Users/Rishikesh/Documents/Codes/yale b/ExtendedYaleB/train'#directory for training data
         if name=='val':
-            directory = 'C:/Users/Rishikesh/Documents/Codes/IITM_neural_network_Assignment/recurrent-attention-model/example/yale b/ExtendedYaleB/test'
-        data = {0:{}}
-        labels = []
-        seed = 22345 #seed for the random state
-        #read the images from the directory
-        for subdir, dirs, files in os.walk(directory):
-            for image in files:
-                r = self.read_img(directory+'/'+image)
-                s = image.split('_')
+            Dirs = 'C:/Users/Rishikesh/Documents/Codes/yale b/ExtendedYaleB/test'
+        (Images, Labels, Names, Paths, ID) = ([], [], [], [], 0)
+        for subdir,dirs, files in os.walk(Dirs):          
+            for FileName in files:
+                path = Dirs + "/" + FileName
+                Img = np.array(Image.open(path))#misc.imread(path, mode='L')
+                Paths.append(path)
+                (img_row, img_col,hight) = Img.shape
+                s = FileName.split('_')
                 #adding this line for yale            
                 s = s[0].split('B')
-                if int(s[1]) not in labels:
-                    labels.append(int(s[1]))
-                try:
-                    data[0][int(s[1])].append([r,int(s[1])])
-                except KeyError:
-                    data[0][int(s[1])] = [[r,int(s[1])]]
-        np.random.RandomState(seed)
-        train_set = list(); 
-        #give the real label to the list
-        for k,v in data.items():
-            for k2, v2 in v.items():
-                temp = []
-                for item in data[k][k2]:
-                    temp.append((item[0],labels.index(item[1])))
-                np.random.shuffle(temp)    
-                data[k][k2] = temp
-                for image_tuple in data[k][k2][:]:
-                    train_set.append(image_tuple)    
-        np.random.RandomState(seed)
-        np.random.shuffle(train_set)
-        print (len(train_set))
-        for imagenew in train_set:
-            image = np.reshape(image,[28,28,1])
-        self.label_list = np.array(labels)
-        self.im_list = np.array(train_set)
+                if int(s[1]) not in Labels:
+                    Labels.append(int(s[1]))
+#               if(width != Img_Shape[0] or height != Img_Shape[1]):
+#                       Img = Img.resize((Img_Shape[0], Img_Shape[1]))
+                Images.append(self.pf(Img))
+        Images = np.asarray(Images, dtype='float32').reshape([-1, img_row, img_col, 1])
+
+        self.im_list = Images
+        self.label_list = Labels
+#        data = {0:{}}
+#        labels = []
+#        seed = 22345 #seed for the random state
+#        #read the images from the directory
+#        for subdir, dirs, files in os.walk(directory):
+#            for image in files:
+#                r = self.read_img(directory+'/'+image)
+#                s = image.split('_')
+#                #adding this line for yale            
+#                s = s[0].split('B')
+#                if int(s[1]) not in labels:
+#                    labels.append(int(s[1]))
+#                try:
+#                    data[0][int(s[1])].append([r,int(s[1])])
+#                except KeyError:
+#                    data[0][int(s[1])] = [[r,int(s[1])]]
+#        np.random.RandomState(seed)
+#        train_set = list(); 
+#        #give the real label to the list
+#        for k,v in data.items():
+#            for k2, v2 in v.items():
+#                temp = []
+#                for item in data[k][k2]:
+#                    temp.append((item[0],labels.index(item[1])))
+#                np.random.shuffle(temp)    
+#                data[k][k2] = temp
+#                for image_tuple in data[k][k2][:]:
+#                    train_set.append(image_tuple)    
+#        np.random.RandomState(seed)
+#        np.random.shuffle(train_set)
+#        print (len(train_set))
+#        self.label_list = np.array(labels)
+#        self.im_list = np.array(train_set)
 
 #    def _load_files(self, name):
 #        mnist_data = input_data.read_data_sets(self._data_dir, one_hot=False)

@@ -53,7 +53,7 @@ class DataFlowMeta(ABCMeta):
         return ABCMeta.__new__(mcls, name, bases, namespace, **kwargs)
 
 
-@six.add_metaclass(DataFlowMeta)
+
 class DataFlow(object):
     """ Base class for all DataFlow """
 
