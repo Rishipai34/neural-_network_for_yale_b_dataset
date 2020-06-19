@@ -172,6 +172,7 @@ import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 import cv2
 import numpy as np 
+import pandas
 from PIL import Image
 from .utilpack import get_rng
 from .DataFlow import DataFlow
@@ -244,7 +245,8 @@ class MNISTData(RNGDataFlow):
 
     def read_img(self,path):
         img = cv2.imread(path,0);
-        img = img.astype(dtype=np.float32)/256.0
+        img = img.astype(np.float32)
+        img = img/255.
         return img
 
 
@@ -255,28 +257,29 @@ class MNISTData(RNGDataFlow):
 
     def _load_files( self,name):
         if name=='train':
-            Dirs = 'C:/Users/Rishikesh/Documents/Codes/yale b/ExtendedYaleB/train'#directory for training data
+            Dirs = 'C:/Users/Rishikesh/Documents/Codes/yale b/ExtendedYaleB/'#directory for training data
         if name=='val':
-            Dirs = 'C:/Users/Rishikesh/Documents/Codes/yale b/ExtendedYaleB/test'
+            Dirs = 'C:/Users/Rishikesh/Documents/Codes/yale b/ExtendedYaleB/train'
+        Nclass = 0
         (Images, Labels, Names, Paths, ID) = ([], [], [], [], 0)
-        for subdir,dirs, files in os.walk(Dirs):          
-            for FileName in files:
-                path = Dirs + "/" + FileName
-                Img = np.array(Image.open(path))#misc.imread(path, mode='L')
-                Paths.append(path)
-                (img_row, img_col,hight) = Img.shape
-                s = FileName.split('_')
-                #adding this line for yale            
-                s = s[0].split('B')
-                if int(s[1]) not in Labels:
-                    Labels.append(int(s[1]))
-#               if(width != Img_Shape[0] or height != Img_Shape[1]):
-#                       Img = Img.resize((Img_Shape[0], Img_Shape[1]))
-                Images.append(self.pf(Img))
-        Images = np.asarray(Images, dtype='float32').reshape([-1, img_row, img_col, 1])
-
+        for (_,Dirs,_) in os.walk(Dirs):
+            for SubDirs in Dirs:
+                SubjectPath = os.path.join(Dirs,SubDirs)
+                Nclass+=1          
+                for FileName in os.listdir(SubjectPath):
+                    path = SubjectPath + "/" + FileName
+                    Img = np.array(self.read_img(path))#misc.imread(path, mode='L')
+                    Paths.append(path)
+                    (img_row, img_col) = Img.shape
+                    Labels.append(int(FileName))
+                    Images.append(Img)
+                    Img = np.resize(28,28)
+        Images = np.asarray(Images, dtype='float32').reshape([-1,img_row, img_col, 1])
+        lbls =[]
+        for label in Labels:
+            lbls.append(Categorical_([label],Nclass)[0])
         self.im_list = Images
-        self.label_list = Labels
+        self.label_list = lbls
 #        data = {0:{}}
 #        labels = []
 #        seed = 22345 #seed for the random state
